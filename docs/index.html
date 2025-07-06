@@ -1,16 +1,17 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>街宣情報フォーム・検索</title>
   <style>
     body { font-family: sans-serif; max-width: 700px; margin: auto; padding: 1em; }
     label { display: block; margin-top: 1em; }
     button { margin-top: 1em; padding: 0.5em 1em; }
-    #result { margin-top: 1em; font-weight: bold; }
+    #postResult, #searchResult { margin-top: 1em; font-weight: bold; white-space: pre-wrap; }
     fieldset { margin-top: 2em; padding: 1em; }
     legend { font-weight: bold; }
+    .issue { border: 1px solid #ccc; padding: 0.5em; margin-bottom: 1em; }
   </style>
 </head>
 <body>
@@ -24,7 +25,7 @@
           <option value="">選択してください</option>
           <option value="東京都">東京都</option>
           <option value="大阪府">大阪府</option>
-          <!-- 他の都道府県をここに追加 -->
+          <!-- 他の都道府県も追加してください -->
         </select>
       </label>
 
@@ -33,7 +34,7 @@
           <option value="">選択してください</option>
           <option value="東京都選挙区">東京都選挙区</option>
           <option value="大阪府選挙区">大阪府選挙区</option>
-          <!-- 他の選挙区をここに追加 -->
+          <!-- 他の選挙区も追加してください -->
         </select>
       </label>
 
@@ -71,12 +72,12 @@
       <label>開始時間：<input type="time" name="time" required></label>
       <label>場所（駅名など）：<input type="text" name="place" required></label>
       <label>応援弁士：<input type="text" name="speaker"></label>
+
       <button type="submit">投稿</button>
       <div id="postResult"></div>
     </form>
   </fieldset>
 
-  
   <fieldset>
     <legend>検索フォーム</legend>
     <form id="searchForm">
@@ -130,7 +131,9 @@
 
       <label>応援弁士（任意）：<input type="text" name="speaker"></label>
 
-      <label>この時刻以降の演説を検索：<input type="datetime-local" name="fromTime"></label>
+      <label>この時刻以降の演説を検索：
+        <input type="datetime-local" name="fromTime" />
+      </label>
 
       <button type="submit">検索</button>
       <div id="searchResult"></div>
@@ -138,11 +141,12 @@
   </fieldset>
 
   <script>
+    // 候補者データの例（実際は多くなるはず）
     const candidateData = [
       { name: "東京 太郎", party: "自由民主党", district: "東京都選挙区" },
       { name: "東京 花子", party: "立憲民主党", district: "東京都選挙区" },
       { name: "大阪 一郎", party: "日本維新の会", district: "大阪府選挙区" },
-      { name: "大阪 さくら", party: "共産党", district: "大阪府選挙区" }
+      { name: "大阪 さくら", party: "共産党", district: "大阪府選挙区" },
     ];
 
     function updateCandidateOptions(districtId, partyId, candidateId) {
@@ -158,10 +162,10 @@
       candidateSelect.innerHTML = '<option value="">選択してください</option>';
 
       filtered.forEach(c => {
-        const opt = document.createElement("option");
-        opt.value = c.name;
-        opt.textContent = c.name;
-        candidateSelect.appendChild(opt);
+        const option = document.createElement("option");
+        option.value = c.name;
+        option.textContent = c.name;
+        candidateSelect.appendChild(option);
       });
 
       if (filtered.length === 1) {
@@ -169,34 +173,66 @@
       }
     }
 
-    ["postDistrict", "postParty"].forEach(id => {
+    ["postDistrict", "postParty"].forEach(id =>
       document.getElementById(id).addEventListener("change", () => {
         updateCandidateOptions("postDistrict", "postParty", "postCandidate");
-      });
-    });
+      })
+    );
 
-    ["searchDistrict", "searchParty"].forEach(id => {
+    ["searchDistrict", "searchParty"].forEach(id =>
       document.getElementById(id).addEventListener("change", () => {
         updateCandidateOptions("searchDistrict", "searchParty", "searchCandidate");
-      });
-    });
+      })
+    );
 
+    // 投稿フォーム送信
     document.getElementById("gaisenForm").addEventListener("submit", async (e) => {
       e.preventDefault();
       const data = Object.fromEntries(new FormData(e.target).entries());
       const res = await fetch("https://gaisen-worker.gaisen-bot.workers.dev", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data)
+        body: JSON.stringify(data),
       });
       document.getElementById("postResult").textContent = res.ok ? "投稿成功！" : "投稿失敗...";
+      if (res.ok) {
+        e.target.reset();
+        document.getElementById("postCandidate").innerHTML = '<option value="">選択してください</option>';
+      }
     });
 
-    document.getElementById("searchForm").addEventListener("submit", (e) => {
+    // 検索フォーム送信
+    document.getElementById("searchForm").addEventListener("submit", async (e) => {
       e.preventDefault();
       const data = Object.fromEntries(new FormData(e.target).entries());
-      document.getElementById("searchResult").textContent = JSON.stringify(data, null, 2);
-    });
-  </script>
-</body>
-</html>
+
+      try {
+        const res = await fetch("https://gaisen-worker.gaisen-bot.workers.dev/search", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(data),
+        });
+
+        if (!res.ok) {
+          throw new Error("検索API呼び出し失敗");
+        }
+
+        const issues = await res.json();
+
+        if (issues.length === 0) {
+          document.getElementById("searchResult").textContent = "該当する情報はありませんでした。";
+          return;
+        }
+
+        const html = issues.map(issue => `
+          <div class="issue">
+            <h3>${issue.title}</h3>
+            <pre>${issue.body}</pre>
+            <a href="${issue.html_url}" target="_blank" rel="noopener">詳細を見る（GitHub）</a>
+          </div>
+        `).join("");
+
+        document.getElementById("searchResult").innerHTML = html;
+
+      } catch (err) {
+        document.getElementBy
