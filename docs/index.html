@@ -38,24 +38,10 @@
       <label>党派：
         <select name="party" id="postParty" required>
           <option value="">選択してください</option>
-         <option value="自由民主党">自由民主党</option>
+          <option value="自由民主党">自由民主党</option>
           <option value="立憲民主党">立憲民主党</option>
           <option value="日本維新の会">日本維新の会</option>
-          <option value="公明党">公明党</option>
-          <option value="国民民主党">国民民主党</option>
           <option value="共産党">共産党</option>
-          <option value="れいわ新選組">れいわ新選組</option>
-          <option value="参政党">参政党</option>
-          <option value="日本保守党">日本保守党</option>
-          <option value="社会民主党">社会民主党</option>
-          <option value="みんなの党">みんなの党</option>
-          <option value="減税日本">減税日本</option>
-          <option value="NHK党">NHK党</option>
-          <option value="政治家女子48党">政治家女子48党</option>
-          <option value="新党くにもり">新党くにもり</option>
-          <option value="誠真会">誠真会</option>
-          <option value="改革党">改革党</option>
-          <option value="無所属">無所属</option>
         </select>
       </label>
 
@@ -100,7 +86,21 @@
           <option value="自由民主党">自由民主党</option>
           <option value="立憲民主党">立憲民主党</option>
           <option value="日本維新の会">日本維新の会</option>
+          <option value="公明党">公明党</option>
+          <option value="国民民主党">国民民主党</option>
           <option value="共産党">共産党</option>
+          <option value="れいわ新選組">れいわ新選組</option>
+          <option value="参政党">参政党</option>
+          <option value="日本保守党">日本保守党</option>
+          <option value="社会民主党">社会民主党</option>
+          <option value="みんなの党">みんなの党</option>
+          <option value="減税日本">減税日本</option>
+          <option value="NHK党">NHK党</option>
+          <option value="政治家女子48党">政治家女子48党</option>
+          <option value="新党くにもり">新党くにもり</option>
+          <option value="誠真会">誠真会</option>
+          <option value="改革党">改革党</option>
+          <option value="無所属">無所属</option>
         </select>
       </label>
 
@@ -162,15 +162,23 @@
     });
 
     document.getElementById("gaisenForm").addEventListener("submit", async (e) => {
-      e.preventDefault();
-      const data = Object.fromEntries(new FormData(e.target).entries());
-      const res = await fetch("https://gaisen-worker.gaisen-bot.workers.dev", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data)
-      });
-      document.getElementById("postResult").textContent = res.ok ? "投稿成功" : "投稿失敗";
-    });
+     e.preventDefault();
+     const data = Object.fromEntries(new FormData(e.target).entries());
+
+     try {
+       const res = await fetch("https://gaisen-worker.gaisen-bot.workers.dev", {
+         method: "POST",
+         headers: { "Content-Type": "application/json" },
+         body: JSON.stringify(data)
+     });
+
+    const text = await res.text();
+    document.getElementById("postResult").textContent = res.ok ? `投稿成功` : `投稿失敗: ${text}`;
+  } catch (err) {
+    document.getElementById("postResult").textContent = `投稿エラー: ${err.message}`;
+  }
+});
+
 
     document.getElementById("searchForm").addEventListener("submit", async (e) => {
       e.preventDefault();
